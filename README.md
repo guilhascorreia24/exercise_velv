@@ -51,10 +51,32 @@ java -jar target/product-catalog-0.0.1-SNAPSHOT.jar
 ## Test
 
 ```bash
-mvn test                                  # all tests
-mvn test -Dtest=ProductControllerTest     # MockMvc tests against the seeded H2 database
-mvn test -Dtest=ProductServiceTest        # Mockito unit tests for the service
+mvn test                                  # all tests (31)
+mvn test -Dtest=ProductControllerTest     # 21 MockMvc tests against the seeded H2 database
+mvn test -Dtest=ProductServiceTest        # 8 Mockito unit tests for the service
+mvn test -Dtest=ProductCatalogApplicationTest   # 2 tests: context startup, 1,500 products seeded, frontend served
 ```
+
+### Browser check
+
+The frontend was also checked end to end in a real browser (headless Chromium driven by Playwright, 29
+scenarios, all passing) on 2026-09-29. The Playwright script is not part of this repository.
+
+- **Loading:** first page, paging buttons, and `?page=` / `?size=` in the URL.
+- **Search:** Enter and button, paginated results, no results, clearing the search.
+- **Add:** a valid product, the browser's built-in validation (empty fields, price > 10000, more than 2
+  decimals), and backend validation messages.
+- **Delete:** Cancel/OK in the confirm dialog, deleting an already-deleted product (404 message), and stepping
+  back after the last page empties.
+- **Loading and error states:** slow request, network failure and server 500.
+
+## Known limitations
+
+- On narrow phone screens (~390px) the table is wider than the card. The **Action** column is cut off and the table
+  has to be scrolled sideways.
+- `price` is stored as a `double`, as architecture.md specifies. A real shop should use `BigDecimal` / `NUMERIC(…, 2)`.
+- There is no authentication, and the H2 console is enabled. This is fine for a local exercise, not for a shared
+  environment.
 
 ## API
 
@@ -147,3 +169,4 @@ src/test/java/com/example/productcatalog/
 - [docs/ai/architecture.md](docs/ai/architecture.md): architecture and design decisions
 - [docs/ai/implementation.md](docs/ai/implementation.md): implementation notes, decisions and AI usage
 - [docs/ai/frontend-prototype.md](docs/ai/frontend-prototype.md): how the original frontend prototype was generated
+- [docs/ai/review.md](docs/ai/review.md): final technical review, findings and the fixes applied
