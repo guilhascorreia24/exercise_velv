@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: product-catalog
+
+  datasource:
+    url: jdbc:h2:mem:catalog
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    show-sql: false
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+server:
+  port: 8080

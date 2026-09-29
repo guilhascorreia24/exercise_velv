@@ -28,3 +28,5 @@
   - Add more robust error handling for network and server errors.
 
 - Notes on provenance: The AI generated the project files programmatically. The developer should review and adapt naming conventions or integrate the files into the larger project structure.
+
+- Update: the prototype has since been moved to `src/main/resources/static/`, and the mocks were replaced with real `fetch()` calls to the Spring Boot API. See [implementation.md](implementation.md#frontend-integration).

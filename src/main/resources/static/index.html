@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Product Catalog - Prototype</title>
+  <title>Product Catalog</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
       <form id="addForm" class="add-form">
         <input id="name" name="name" placeholder="Name" required>
         <input id="category" name="category" placeholder="Category" required>
-        <input id="price" name="price" placeholder="Price" type="number" step="0.01" required>
+        <input id="price" name="price" placeholder="Price" type="number" step="0.01" min="0.01" required>
         <button type="submit">Add Product</button>
       </form>
     </section>
@@ -52,7 +52,7 @@
     </section>
 
     <footer>
-      <small>Prototype using mocked API. Replace mock with real API calls later.</small>
+      <small>Backed by the Spring Boot REST API at <code>/api/products</code>.</small>
     </footer>
   </div>
 

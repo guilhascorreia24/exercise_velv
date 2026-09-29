@@ -376,7 +376,67 @@ spring:
 
 Do not rely on PostgreSQL, MySQL, or any other external service to run the application and its simple for this application to use
 
+# Tests
 
+The application must include sufficient tests to demonstrate its key decisions.
+
+Controller tests
+
+Test:
+
+GET
+```
+GET /api/products
+→ 200
+```
+Pagination
+```
+GET /api/products?page=1&size=20
+→ correct page
+```
+Search
+```
+GET /api/products?search=headphones
+→ filtered results
+```
+POST
+```
+POST /api/products
+→ 201
+```
+Invalid POST
+```
+POST /api/products
+→ 400
+```
+DELETE
+```
+DELETE /api/products/{id}
+→ 204
+```
+DELETE does not exist
+```
+DELETE /api/products/{id}
+→ 404
+```
+## Service tests
+
+Test at least the following:
+
+- search;
+- creation;
+- deletion;
+- non-existent product.
+
+Do not create artificial tests just to increase coverage.
+
+## ntegration test
+
+There should be at least one test that starts the Spring context:
+```
+@SpringBootTest
+```
+and verifies that the application initializes correctly.
 
 
 
