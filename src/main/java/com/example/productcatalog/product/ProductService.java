@@ -28,11 +28,14 @@ public class ProductService {
 
     /**
      * Returns one page of products, optionally filtered by name.
-     * Out-of-range paging values are normalised (page >= 0, 1 <= size <= {@value #MAX_PAGE_SIZE})
-     * so a single request can never load the whole catalog.
+     * Out-of-range paging values are normalised (1 <= size <= {@value #MAX_PAGE_SIZE}, page >= 0)
+     * so a single request can never load the whole catalog. The page is also capped so that the
+     * row offset (page * size) fits in an int, which is the limit JPA accepts.
      */
     public ProductPageResponse findProducts(String search, int page, int size) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE), DEFAULT_SORT);
+        int pageSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+        int pageNumber = Math.clamp(page, 0, Integer.MAX_VALUE / pageSize);
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, DEFAULT_SORT);
 
         Page<Product> result = (search == null || search.isBlank())
                 ? productRepository.findAll(pageable)
@@ -43,14 +46,14 @@ public class ProductService {
 
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
-        Product product = new Product(request.name().trim(), request.category().trim(), request.price());
+        Product product = new Product(request.name().trim(), request.category().trim(), request.price().doubleValue());
         return ProductResponse.from(productRepository.save(product));
     }
 
     @Transactional
     public void delete(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
-        productRepository.delete(product);
+        if (productRepository.deleteProductById(id) == 0) {
+            throw new ProductNotFoundException(id);
+        }
     }
 }

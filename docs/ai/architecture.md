@@ -110,7 +110,7 @@ Functionalities:
 - search by name
 - pagination
 - add/delete products
-- 1000 products
+- 1,500 preloaded products
 - simple ui
 
 # Architeture
@@ -197,7 +197,8 @@ Will be JpaRepository<Product,Long>
 Will support:
 - list product by page
 - search by name (ex: findbyNameContainingIgnoreCase(String name, Pageable pageable))
-- search case sensitive
+- search case-insensitive
+- delete by id in a single statement (`@Modifying` query returning the number of deleted rows)
 
 dont list all product for dont use too much memory
 
@@ -252,7 +253,7 @@ request:
 {
        name:"mouse",
        price:50.00,
-       catalog:"technology"
+       category:"technology"
 }
 ```
 Response:
@@ -265,16 +266,18 @@ body:
        id:1
        name:"mouse",
        price:50.00,
-       catalog:"technology"
+       category:"technology"
 }
 ```
 
 ### Validation
 CreateProductRequest will use jakarta validation  
 Rules:  
-name (@NotBlank)  
-price (@NotNull,@Positive)  
-catalog (@NotBlank)
+name (@NotBlank, @Size(max = 255))  
+price (@NotNull, @Positive, @DecimalMax("10000.00"), @Digits(integer = 5, fraction = 2))  
+category (@NotBlank, @Size(max = 255))
+
+In the request DTO, price is a BigDecimal so the exact JSON value is validated. The entity keeps price as double.
 
 ## delete product
 
@@ -305,13 +308,18 @@ Ex:
   "message": "Product not found"
 }
 
-Para erros de validação:
+Para erros de validação (with one message per invalid field in `errors`):
 
 {
   "timestamp": "2026-09-25T20:00:00Z",
   "status": 400,
-  "message": "Validation failed"
+  "message": "Validation failed",
+  "errors": {
+    "price": "Price must be greater than 0"
+  }
 }
+
+Every other error (400 bad parameter or body, 405, 415, 500, ...) uses the same payload, without `errors`.
 
 # Pagination
 dont show 1000 items one time

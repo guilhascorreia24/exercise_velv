@@ -17,8 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -93,6 +93,18 @@ class ProductServiceTest {
     }
 
     @Test
+    void findProductsCapsPageSoOffsetFitsInAnInt() {
+        when(productRepository.findAll(any(Pageable.class)))
+                .thenAnswer(invocation -> pageOf(invocation.getArgument(0), 0));
+
+        productService.findProducts(null, Integer.MAX_VALUE, 100);
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(productRepository).findAll(pageable.capture());
+        assertThat(pageable.getValue().getOffset()).isLessThanOrEqualTo(Integer.MAX_VALUE);
+    }
+
+    @Test
     void createPersistsTrimmedProductAndReturnsResponse() {
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product saved = invocation.getArgument(0);
@@ -100,7 +112,8 @@ class ProductServiceTest {
             return saved;
         });
 
-        ProductResponse response = productService.create(new CreateProductRequest("  Mouse ", " Technology ", 50.0));
+        ProductResponse response = productService.create(
+                new CreateProductRequest("  Mouse ", " Technology ", new BigDecimal("50.00")));
 
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
         verify(productRepository).save(captor.capture());
@@ -112,23 +125,20 @@ class ProductServiceTest {
 
     @Test
     void deleteRemovesExistingProduct() {
-        Product product = productWithId(5L, "Desk Lamp", "Home", 29.99);
-        when(productRepository.findById(5L)).thenReturn(Optional.of(product));
+        when(productRepository.deleteProductById(5L)).thenReturn(1);
 
         productService.delete(5L);
 
-        verify(productRepository).delete(product);
+        verify(productRepository).deleteProductById(5L);
     }
 
     @Test
     void deleteUnknownProductThrowsNotFound() {
-        when(productRepository.findById(99L)).thenReturn(Optional.empty());
+        when(productRepository.deleteProductById(99L)).thenReturn(0);
 
         assertThatThrownBy(() -> productService.delete(99L))
                 .isInstanceOf(ProductNotFoundException.class)
                 .hasMessage("Product with id 99 not found");
-
-        verify(productRepository, never()).delete(any(Product.class));
     }
 
     private static Product productWithId(Long id, String name, String category, double price) {

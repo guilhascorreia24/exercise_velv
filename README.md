@@ -3,7 +3,7 @@
 A Spring Boot application with a simple frontend for searching, paginating, adding and removing products.
 It starts with 1,500 preloaded products in an in-memory H2 database, so it has no external dependencies.
 
-- **Backend:** Java 21, Spring Boot 3.5 (Web, Data JPA, Validation), H2 in-memory
+- **Backend:** Java 21, Spring Boot 3.5 (Web, Data JPA, Validation, Actuator), H2 in-memory
 - **Frontend:** vanilla HTML/CSS/JS, served by Spring Boot from `src/main/resources/static/`
 - **Tests:** JUnit 5, Mockito, MockMvc
 
@@ -25,8 +25,21 @@ Then open:
 | http://localhost:8080 | Frontend (search, pagination, add, delete) |
 | http://localhost:8080/api/products | REST API |
 | http://localhost:8080/h2-console | H2 console (JDBC URL `jdbc:h2:mem:catalog`, user `sa`, empty password) |
+| http://localhost:8080/actuator/health | Health check (`{"status":"UP"}`) |
 
 The database is in-memory (`create-drop`), so every restart begins with the same 1,500 products.
+
+### Health check
+
+Spring Boot Actuator is on the classpath with its default configuration, so only the `health` endpoint is exposed
+over HTTP:
+
+```bash
+curl http://localhost:8080/actuator/health
+# {"status":"UP"}
+```
+
+`/actuator` lists the available endpoints. Other Actuator endpoints (metrics, env, beans, ...) are not exposed.
 
 ### Build a runnable jar
 
@@ -49,11 +62,18 @@ mvn test -Dtest=ProductServiceTest        # Mockito unit tests for the service
 |--------|------|---------|--------|
 | `GET` | `/api/products?page=0&size=20&search=` | `200` `ProductPageResponse` | `400` for non-numeric `page` / `size` |
 | `POST` | `/api/products` | `201` `ProductResponse` | `400` validation failed / malformed JSON |
-| `DELETE` | `/api/products/{id}` | `204` | `404` product not found |
+| `DELETE` | `/api/products/{id}` | `204` | `404` product not found, `400` non-numeric id |
+
+Unsupported methods (`405`) and content types (`415`), unknown paths (`404`) and unexpected errors (`500`) return
+the same error payload.
 
 **Paging rules:** `page` defaults to `0` and `size` to `20`. `size` is capped at `100` and raised to at least `1`, and a negative `page` becomes `0`.
+Very large `page` values are capped (the row offset must fit in an `int`) and return an empty page.
 The response `size` field shows the size that was actually used. Results are sorted by `id` ascending.
 `search` does a partial, case-insensitive match on the product name. Blank means no filter.
+
+**Create rules:** `name` and `category` are required, with at most 255 characters each. `price` is required,
+greater than 0, at most `10000.00`, and has at most 2 decimal places.
 
 ### Examples
 

@@ -23,19 +23,23 @@ let size = DEFAULT_SIZE;
 let totalPages = 0;
 let totalElements = 0;
 let currentSearch = '';
+let latestRequest = 0; // only the most recent load() may update the table
+let hideTimer = null;
 
 // Utilities
 function showStatus(text, type='loading'){
+  clearTimeout(hideTimer); // a pending flash must not hide this newer message
   statusEl.textContent = text;
   statusEl.className = 'status ' + (type||'');
   statusEl.classList.remove('hidden');
 }
 function hideStatus(){
+  clearTimeout(hideTimer);
   statusEl.className = 'status hidden';
 }
 function flashStatus(text, ms=1500){
   showStatus(text, 'success');
-  setTimeout(()=> hideStatus(), ms);
+  hideTimer = setTimeout(()=> hideStatus(), ms);
 }
 
 // API client
@@ -118,6 +122,10 @@ function updatePagination(info){
   totalElements = info.totalElements;
   const shownPages = Math.max(1, totalPages);
   pageInfo.textContent = `Page ${page + 1} of ${shownPages} — ${totalElements} items`;
+  updatePagingButtons();
+}
+
+function updatePagingButtons(){
   prevBtn.disabled = page <= 0;
   nextBtn.disabled = page >= totalPages - 1;
 }
@@ -131,27 +139,34 @@ function formatPrice(v){
 }
 
 // App actions
-async function load(){
+
+// Loads `targetPage`; `page` only changes once the server answers. Returns true if the table was updated.
+async function load(targetPage = page){
+  const requestId = ++latestRequest;
+  prevBtn.disabled = nextBtn.disabled = true;
   showStatus('Loading...', 'loading');
   try{
-    const res = await getProducts({ page, size, search: currentSearch });
+    const res = await getProducts({ page: targetPage, size, search: currentSearch });
+    if(requestId !== latestRequest) return false; // a newer request superseded this one
     // e.g. after deleting the last item of the last page: step back to the previous page
     if(!res.items.length && res.page > 0 && res.totalElements > 0){
-      page = Math.max(0, res.totalPages - 1);
-      return load();
+      return load(Math.max(0, res.totalPages - 1));
     }
     renderProducts(res.items);
     updatePagination(res);
     hideStatus();
+    return true;
   }catch(err){
+    if(requestId !== latestRequest) return false;
+    updatePagingButtons();
     showStatus(err.message || 'Failed to load products', 'error');
+    return false;
   }
 }
 
 async function doSearch(){
   currentSearch = searchInput.value || '';
-  page = 0;
-  await load();
+  await load(0);
 }
 
 async function doAdd(e){
@@ -164,8 +179,8 @@ async function doAdd(e){
   try{
     const added = await addProduct({ name, category, price });
     addForm.reset();
-    await load();
-    flashStatus(`Product #${added.id} "${added.name}" added`, 2500);
+    // if the reload fails, load() leaves its error visible instead of this success message
+    if(await load()) flashStatus(`Product #${added.id} "${added.name}" added`, 2500);
   }catch(err){
     showStatus(err.message || 'Add failed', 'error');
   }
@@ -176,16 +191,15 @@ async function doDelete(id){
   showStatus('Deleting...', 'loading');
   try{
     await deleteProduct(id);
-    await load();
-    flashStatus(`Product #${id} deleted`);
+    if(await load()) flashStatus(`Product #${id} deleted`);
   }catch(err){
     showStatus(err.message || 'Delete failed', 'error');
   }
 }
 
 // wire events
-prevBtn.addEventListener('click', ()=>{ if(page>0){ page--; load(); }});
-nextBtn.addEventListener('click', ()=>{ if(page<totalPages-1){ page++; load(); }});
+prevBtn.addEventListener('click', ()=>{ if(page>0) load(page - 1); });
+nextBtn.addEventListener('click', ()=>{ if(page<totalPages-1) load(page + 1); });
 searchBtn.addEventListener('click', doSearch);
 searchInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); doSearch(); }});
 addForm.addEventListener('submit', doAdd);

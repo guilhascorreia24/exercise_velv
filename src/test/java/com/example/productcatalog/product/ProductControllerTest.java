@@ -1,6 +1,8 @@
 package com.example.productcatalog.product;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,7 +17,9 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -81,6 +85,27 @@ class ProductControllerTest {
     }
 
     @Test
+    void searchIsPaginated() throws Exception {
+        // 120 "head" matches -> page 1 of size 50 holds matches 51..100
+        mockMvc.perform(get("/api/products").param("search", "head").param("page", "1").param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(50)))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.totalElements").value(120))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.items[*].name", everyItem(containsStringIgnoringCase("head"))));
+    }
+
+    @Test
+    void listWithHugePageReturnsEmptyPageInsteadOfFailing() throws Exception {
+        // page * size would overflow the int offset JPA accepts
+        mockMvc.perform(get("/api/products").param("page", "21474837").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(1500));
+    }
+
+    @Test
     void searchWithoutMatchesReturnsEmptyPage() throws Exception {
         mockMvc.perform(get("/api/products").param("search", "no-such-product"))
                 .andExpect(status().isOk())
@@ -122,6 +147,39 @@ class ProductControllerTest {
     }
 
     @Test
+    void createWithoutPriceReturns400() throws Exception {
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name": "Mouse", "category": "Technology"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.price").value("Price is required"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"10000.01", "12.345", "1e400"})
+    void createWithOutOfRangePriceReturns400(String price) throws Exception {
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"Mouse\", \"category\": \"Technology\", \"price\": " + price + "}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.price", notNullValue()));
+    }
+
+    @Test
+    void createAcceptsMaximumPrice() throws Exception {
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name": "Mouse", "category": "Technology", "price": 10000.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.price").value(10000.00));
+    }
+
+    @Test
     void createWithMalformedJsonReturns400() throws Exception {
         mockMvc.perform(post("/api/products")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -150,5 +208,31 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Product with id 999999 not found"))
                 .andExpect(jsonPath("$.errors").doesNotExist());
+    }
+
+    @Test
+    void deleteWithNonNumericIdReturns400() throws Exception {
+        mockMvc.perform(delete("/api/products/{id}", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Invalid value for parameter 'id'"));
+    }
+
+    @Test
+    void unsupportedMethodReturns405WithStandardPayload() throws Exception {
+        mockMvc.perform(put("/api/products"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().exists("Allow"))
+                .andExpect(jsonPath("$.timestamp", notNullValue()))
+                .andExpect(jsonPath("$.status").value(405))
+                .andExpect(jsonPath("$.message").value("Method 'PUT' is not supported."));
+    }
+
+    @Test
+    void unsupportedContentTypeReturns415WithStandardPayload() throws Exception {
+        mockMvc.perform(post("/api/products").contentType(MediaType.TEXT_PLAIN).content("Mouse"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.message", notNullValue()));
     }
 }
