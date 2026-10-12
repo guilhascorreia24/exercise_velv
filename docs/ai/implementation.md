@@ -186,7 +186,8 @@ Design notes:
   - `page=21474837&size=100` → 200 with an empty page;
   - 20 ids × 2 concurrent DELETEs → 20×204 and 20×404 (before the fix: 12 of the 40 requests returned 500);
   - `/actuator/health` → UP, and `/` serves the UI.
-- The frontend changes were checked with `node --check` (syntax only). They were **not** tested in a browser.
+- The frontend changes were checked by the AI with `node --check` (syntax only), not in a browser.
+  The developer then tested the main flows manually in a browser (list, search, add, delete).
 
 ## What the developer should review or change
 
@@ -197,4 +198,4 @@ Design notes:
 - `ApiError.java` is one file beyond the target structure. It holds the shared error payload.
 - The H2 console is enabled for local development. Disable it (`spring.h2.console.enabled: false`) in any shared
   environment.
-- Test the frontend flows (search, paging, add, delete, error messages) manually in a browser before submitting.
+- Frontend flows were tested manually in a browser by the developer; there are no automated frontend tests.

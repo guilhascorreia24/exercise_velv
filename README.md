@@ -59,8 +59,9 @@ mvn test -Dtest=ProductCatalogApplicationTest   # 2 tests: context startup, 1,50
 
 ### Browser check
 
-The frontend was also checked end to end in a real browser (headless Chromium driven by Playwright, 29
-scenarios, all passing) on 2026-09-29. The Playwright script is not part of this repository.
+The frontend was checked manually in a browser by the developer: listing products,
+searching (including a term with no results), adding a product and deleting a product.
+There are no automated frontend tests.
 
 - **Loading:** first page, paging buttons, and `?page=` / `?size=` in the URL.
 - **Search:** Enter and button, paginated results, no results, clearing the search.

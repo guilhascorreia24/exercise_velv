@@ -176,7 +176,7 @@ completed by Claude.
 | S5 Atomic delete | Accepted | `ProductRepository.deleteProductById` (`@Modifying @Query`, returns the row count); the service throws `ProductNotFoundException` when it is 0. | Service tests updated; `curl` race: 20 ids × 2 concurrent → 20×204, 20×404, **0×500** (before: 12×500) |
 | S6 Close test gaps | Accepted | Added tests: POST without price, search + page 1, DELETE `/abc` → 400, plus the S1/S2/S7 tests. | `mvn clean test`: 31/31 |
 | S7 Page offset guard | Accepted | `page` is clamped to `Integer.MAX_VALUE / size`, consistent with the existing `size` clamp. | Controller test (huge page → 200, empty), service test (offset ≤ `Integer.MAX_VALUE`); `curl` confirmed |
-| S8 Frontend polish | Accepted | Success only after a successful reload; requests numbered so stale responses are ignored; paging buttons disabled while loading; `page` changes only on success; pending hide timer cancelled; hidden `<label>`s; `max="10000"`/`maxlength="255"` on inputs. | `node --check` only. **Not tested in a browser.** |
+| S8 Frontend polish | Accepted | Success only after a successful reload; requests numbered so stale responses are ignored; paging buttons disabled while loading; `page` changes only on success; pending hide timer cancelled; hidden `<label>`s; `max="10000"`/`maxlength="255"` on inputs. | **Not tested in a browser by Claude**; the developer tested the main flows manually afterwards.|
 | S9 Mockito agent warning | Accepted | `maven-dependency-plugin:properties` + Surefire `argLine` `-javaagent:${org.mockito:mockito-core:jar} -Xshare:off`. | `mvn clean test` output: 0 agent/CDS warnings |
 | F7, F8, F11, F13 | Not changed | Kept as-is, as the review recommended (defensible for the exercise). | — |
 
