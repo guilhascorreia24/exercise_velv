@@ -69,8 +69,7 @@ There are no automated frontend tests.
   decimals), and backend validation messages.
 - **Delete:** Cancel/OK in the confirm dialog, deleting an already-deleted product (404 message), and stepping
   back after the last page empties.
-- **Loading and error states:** slow request, network failure and server 500.
-
+  
 ## Known limitations
 
 - On narrow phone screens (~390px) the table is wider than the card. The **Action** column is cut off and the table
